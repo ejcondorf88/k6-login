@@ -1,4 +1,33 @@
-# Guía de Ejecución - Login Load Test
+# Load Test: FakeStoreAPI Login - Ejercicio K6
+
+## Descripción del Ejercicio
+Prueba de carga para el endpoint POST `/auth/login` de fakestoreapi.com utilizando **k6** como herramienta de testing.
+
+### Requerimientos Cumplidos
+- ✅ **Data parameterization** desde archivo CSV (`data/users.csv`)
+- ✅ **Throughput**: 20 TPS (transacciones por segundo)
+- ✅ **SLA Latencia**: p95 < 1.5 segundos
+- ✅ **SLA Errores**: Tasa de error < 3%
+- ✅ **Validaciones**: HTTP 201 + Token JWT presente
+
+## Herramienta Utilizada
+- **k6** v0.47.0+ - Motor de pruebas de carga moderno y eficiente
+
+## Arquitectura del Proyecto
+```
+k6/
+├── main.js                 # Entry point
+├── config/
+│   └── test.json          # Configuración de escenario (20 TPS, 2min)
+├── scenarios/
+│   └── login.js           # Orquestador (carga CSV, round-robin)
+├── scripts/
+│   └── login.js           # Implementación HTTP (POST + checks)
+├── data/
+│   └── users.csv          # 5 credenciales de fakestoreapi.com
+└── common/
+    └── utils.js           # Utilidades reutilizables
+```
 
 ## Versiones de Tecnologías
 
@@ -160,6 +189,39 @@ http_req_failed ✓ 'rate<0.03'
 - `✗` en lugar de `✓`
 - Revisar métricas para identificar problema
 
+---
+
+### Paso 8: Captura de Pantalla (Para Repositorio)
+
+Tomar una captura de pantalla de la terminal mostrando:
+1. El comando de ejecución: `k6 run main.js`
+2. El resumen final con thresholds (`█ THRESHOLDS`)
+3. Las métricas principales (`█ TOTAL RESULTS`)
+4. El estado de los checks (`✓ status is 201`, `✓ has token`)
+
+**Guardar como:** `evidencia-ejecucion.png` o similar
+
+**Ejemplo de salida esperado:**
+```
+█ THRESHOLDS
+http_req_duration ✓ 'p(95)<1500'
+http_req_failed ✓ 'rate<0.03'
+
+█ TOTAL RESULTS
+checks_total.......: 4788 39.804407/s
+checks_succeeded...: 100.00% 4788 out of 4788
+checks_failed......: 0.00% 0 out of 4788
+✓ status is 201
+✓ has token
+
+HTTP
+http_req_duration: avg=343.92ms min=324.76ms med=341.26ms max=747.38ms p(90)=353.76ms p(95)=358.88ms
+http_req_failed: 0.00% 0 out of 2394
+```
+
+> **Nota**: El servicio fakestoreapi.com es gratuito y puede variar en rendimiento. Si los thresholds fallan (latencia > 1.5s), esto es válido — el test está detectando que el servicio no cumple el SLA a 20 TPS.
+![alt text](image.png)
+![alt text](image-1.png)
 ---
 
 ## Ejecución con Variables de Entorno
