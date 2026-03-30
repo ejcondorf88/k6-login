@@ -1,10 +1,17 @@
 {
   "scenarios": {
-    "scenario1": {
-      "executor": "shared-iterations",
-      "iterations": 1,
-      "vus": 1,
-      "exec": "scenario1"
+    "login": {
+      "executor": "constant-arrival-rate",
+      "rate": 20,
+      "timeUnit": "1s",
+      "duration": "2m",
+      "preAllocatedVUs": 5,
+      "maxVUs": 20,
+      "exec": "loginScenario"
     }
+  },
+  "thresholds": {
+    "http_req_duration": ["p(95)<1500"],
+    "http_req_failed": ["rate<0.03"]
   }
 }
