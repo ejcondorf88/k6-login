@@ -1,18 +1,71 @@
-# Load Test: FakeStoreAPI Login
+# Guía de Ejecución - Login Load Test
 
-## Descripción
-Prueba de carga para el endpoint POST `/auth/login` de fakestoreapi.com con data parameterization desde CSV.
+## Versiones de Tecnologías
 
-## Configuración
+| Tecnología | Versión Requerida | Descripción |
+|------------|-------------------|-------------|
+| **k6** | v0.47.0+ | Motor de pruebas de carga |
+| **Node.js** | v18.0+ | Recomendado (para herramientas adicionales) |
+| **curl** | 7.0+ | Para verificaciones manuales |
 
-### Escenario
-- **Executor**: `constant-arrival-rate`
-- **Throughput**: 20 TPS (transacciones por segundo)
-- **Duración**: 2 minutos
-- **VUs**: 5-20 (pre-allocated: 5, máximo: 20)
+## Verificación de Versiones
 
-### Datos
-Archivo: `data/users.csv`
+### Verificar k6
+```bash
+k6 version
+```
+**Salida esperada:**
+```
+k6 v0.47.0 (or newer)
+```
+
+**Instalación (si no tienes k6):**
+- **Windows (Chocolatey)**: `choco install k6`
+- **Windows (MSI)**: Descargar desde https://dl.k6.io/msi/k6-latest-amd64.msi
+- **Linux**: `sudo apt-get install k6`
+- **Mac**: `brew install k6`
+
+---
+
+## Instrucciones Paso a Paso
+
+### Paso 1: Clonar o Navegar al Proyecto
+
+```bash
+cd C:\k6
+```
+
+Verificar estructura:
+```bash
+dir
+```
+
+**Archivos esperados:**
+```
+main.js
+config/
+  └── test.json
+scenarios/
+  └── login.js
+scripts/
+  └── login.js
+data/
+  └── users.csv
+common/
+  └── utils.js
+```
+
+---
+
+### Paso 2: Verificar Archivo de Datos
+
+Comprobar que `data/users.csv` existe y tiene formato correcto:
+
+```bash
+type data\users.csv
+```
+
+**Contenido esperado:**
 ```csv
 user,passwd
 donero,ewedon
@@ -22,192 +75,202 @@ derek,jklg*_56
 mor_2314,83r5^_
 ```
 
-### Thresholds (SLA)
-| Métrica | Límite | Descripción |
-|---------|--------|-------------|
-| http_req_duration | p(95) < 1,500ms | 95% de las peticiones deben responder en menos de 1.5 segundos |
-| http_req_failed | rate < 0.03 | Menos del 3% de las peticiones pueden fallar |
+> **Nota**: El archivo debe tener exactamente 5 usuarios (más header). Cada usuario se usará en round-robin.
 
 ---
 
-## Resultados del Test
+### Paso 3: Verificar Sintaxis (Smoke Test)
 
-### Resumen Ejecución
-| Métrica | Valor |
-|---------|-------|
-| **Duración Total** | 2m 0.3s |
-| **Iteraciones Completadas** | 2,394 |
-| **Iteraciones Interrumpidas** | 0 |
-| **Iteraciones Dropeadas** | 6 |
-| **Peticiones HTTP** | 2,394 |
-| **VUs Máximos** | 11 |
-
-### Estado de Thresholds
-| Threshold | Resultado | Valor Medido | Estado |
-|-----------|-----------|--------------|--------|
-| http_req_duration p(95) < 1500ms | ✅ **PASS** | 358.88ms | Cumple SLA |
-| http_req_failed rate < 0.03 | ✅ **PASS** | 0.00% | Cumple SLA |
-
----
-
-## Métricas Detalladas
-
-### 1. Iteraciones
-| Métrica | Valor | Significado |
-|---------|-------|-------------|
-| **Total Iteraciones** | 2,394 | Número total de ejecuciones de la función de test |
-| **Tasa de Iteraciones** | 19.90/s | Promedio de iteraciones por segundo (objetivo: 20 TPS) |
-| **Iteraciones Dropeadas** | 6 | Iteraciones que no se pudieron ejecutar (0.25%) |
-
-**Interpretación**: Se alcanzaron aproximadamente 20 TPS, con solo 6 iteraciones dropeadas debido a la ramp-up inicial.
-
----
-
-### 2. Duración de Peticiones HTTP (http_req_duration)
-| Métrica | Valor | Significado |
-|---------|-------|-------------|
-| **Promedio (avg)** | 343.92ms | Tiempo medio de respuesta |
-| **Mínimo (min)** | 324.77ms | Respuesta más rápida |
-| **Mediana (med)** | 341.27ms | 50% de las respuestas fueron más rápidas que esto |
-| **Máximo (max)** | 747.38ms | Respuesta más lenta |
-| **Percentil 90 (p90)** | 353.77ms | 90% de las respuestas fueron más rápidas que esto |
-| **Percentil 95 (p95)** | 358.88ms | 95% de las respuestas fueron más rápidas que esto |
-
-**Interpretación**: 
-- ✅ Todas las respuestas están muy por debajo del SLA de 1,500ms
-- El p95 de 358.88ms es 4.2x más rápido que el límite permitido
-- Distribución consistente sin outliers críticos
-
----
-
-### 3. Errores HTTP (http_req_failed)
-| Métrica | Valor | Significado |
-|---------|-------|-------------|
-| **Peticiones Fallidas** | 0 | Total de peticiones HTTP con error |
-| **Peticiones Exitosas** | 2,394 | Total de peticiones HTTP exitosas |
-| **Tasa de Fallo** | 0.00% | Porcentaje de peticiones fallidas |
-
-**Interpretación**: 
-- ✅ **0% de errores**, muy por debajo del límite del 3%
-- Todas las peticiones recibieron HTTP 201 con token JWT válido
-- El endpoint de fakestoreapi.com manejó la carga sin problemas
-
----
-
-### 4. Checks
-| Check | Pases | Fallos | Estado |
-|-------|-------|--------|--------|
-| **status is 201** | 2,394 | 0 | ✅ 100% |
-| **has token** | 2,394 | 0 | ✅ 100% |
-| **Total Checks** | 4,788 | 0 | ✅ 100% |
-
-**Interpretación**: 
-- Validaciones funcionan correctamente
-- Cada petición valida: HTTP 201 + presencia de token
-- 2 checks por iteración (status + token) = 4,788 checks totales
-
----
-
-### 5. Duración de Iteración (iteration_duration)
-| Métrica | Valor | Significado |
-|---------|-------|-------------|
-| **Promedio** | 344.12ms | Tiempo total de cada iteración |
-| **Mediana** | 341.42ms | Valor central de duraciones |
-| **Máximo** | 771.54ms | Iteración más lenta |
-
-**Interpretación**: Incluye tiempo de HTTP request + checks. La diferencia con http_req_duration es mínima (~0.2ms), indicando que los checks son muy rápidos.
-
----
-
-### 6. Virtual Users (VUs)
-| Métrica | Valor | Significado |
-|---------|-------|-------------|
-| **VUs Activos (min)** | 6 | Mínimo de VUs concurrentes |
-| **VUs Activos (max)** | 7 | Máximo de VUs concurrentes |
-| **VUs Máximos Configurados** | 11 | Límite de escalamiento |
-
-**Interpretación**: El executor usó 6-7 VUs para mantener 20 TPS, bien por debajo del máximo configurado de 20 VUs.
-
----
-
-### 7. Métricas de Red
-| Métrica | Valor | Significado |
-|---------|-------|-------------|
-| **Data Recibida** | 1.4 MB | Total de datos descargados |
-| **Data Enviada** | 290 KB | Total de datos subidos |
-| **Tasa Recepción** | 12 kB/s | Velocidad promedio de descarga |
-| **Tasa Envío** | 2.4 kB/s | Velocidad promedio de subida |
-
-**Interpretación**: Tráfico de red moderado, consistente con peticiones JSON pequeñas (~120 bytes request, ~590 bytes response).
-
----
-
-### 8. Tiempos de Fases HTTP
-| Métrica | Valor | Significado |
-|---------|-------|-------------|
-| **Blocked** | 0.07ms | Tiempo esperando conexión disponible |
-| **Connecting** | 0.01ms | Tiempo estableciendo conexión TCP |
-| **TLS Handshaking** | 0.04ms | Tiempo negociación TLS (reusado) |
-| **Sending** | 0.005ms | Tiempo enviando request |
-| **Waiting** | 343.78ms | Tiempo esperando respuesta del servidor (TTFB) |
-| **Receiving** | 0.14ms | Tiempo recibiendo response |
-
-**Interpretación**: 
-- **99.9% del tiempo** es "waiting" (tiempo del servidor)
-- Conexiones TLS reusadas (handshake casi 0)
-- Overhead de red despreciable
-
----
-
-## Conclusión
-
-### Estado General: ✅ **EXITOSO**
-
-| Criterio | Requerido | Obtenido | Estado |
-|----------|-----------|----------|--------|
-| Throughput | 20 TPS | 19.90 TPS | ✅ Cumple |
-| Latencia p95 | < 1,500ms | 358.88ms | ✅ Cumple |
-| Tasa de Error | < 3% | 0% | ✅ Cumple |
-| Duración | 2 minutos | 2m 0.3s | ✅ Cumple |
-
-### Hallazgos
-1. **El endpoint fakestoreapi.com soporta 20 TPS** sin degradación
-2. **Latencia promedio de ~344ms** es excelente para un servicio externo
-3. **0% de errores** indica estabilidad del servicio bajo carga
-4. **6 iteraciones dropeadas** (0.25%) es aceptable durante ramp-up
-
-### Recomendaciones
-- El servicio puede soportar cargas mayores (stress test recomendado)
-- Considerar test de mayor duración (soak test) para detectar degradación
-- Monitorear rate limiting si se aumenta TPS (>50 TPS)
-
----
-
-## Ejecución
+Ejecutar validación rápida sin enviar peticiones reales:
 
 ```bash
-# Ejecutar test completo (2 minutos)
-k6 run main.js
-
-# Ejecutar con salida JSON
-k6 run --summary-export=results.json main.js
-
-# Ejecutar smoke test (1 iteración)
 k6 run --vus 1 --iterations 1 main.js
 ```
 
-## Estructura del Proyecto
+**Salida esperada:**
+```
+INFO[0000] Login load test - execute with: k6 run main.js
+...
+✓ status is 201
+✓ has token
+```
+
+**Errores comunes:**
+- `The system cannot find the path specified` → Verificar ruta del CSV
+- `SyntaxError` → Revisar comillas en archivos .js
+
+---
+
+### Paso 4: Ejecutar Test Completo
+
+Ejecutar la prueba de carga completa (2 minutos, 20 TPS):
+
+```bash
+k6 run main.js
+```
+
+**Comportamiento esperado:**
+- Inicio: 0-5 segundos (ramp-up)
+- Ejecución: 2 minutos a 20 TPS
+- Total: ~2,400 iteraciones
+- Finalización: Resumen de métricas
+
+**Interrupción (si es necesario):**
+```bash
+Ctrl+C
+```
+
+---
+
+### Paso 5: Ejecutar con Exportación de Resultados
+
+Para guardar métricas en formato JSON:
+
+```bash
+k6 run --summary-export=resultados.json main.js
+```
+
+**Archivo generado:** `resultados.json` con todas las métricas detalladas.
+
+---
+
+### Paso 6: Ejecutar con CSV Output
+
+Para exportar métricas en tiempo real a CSV:
+
+```bash
+k6 run --out csv=metricas.csv main.js
+```
+
+**Archivo generado:** `metricas.csv` con datos de cada petición.
+
+---
+
+### Paso 7: Verificar Thresholds
+
+Al finalizar, verificar que aparezca:
+
+```
+█ THRESHOLDS
+http_req_duration ✓ 'p(95)<1500'
+http_req_failed ✓ 'rate<0.03'
+```
+
+**Si los thresholds fallan:**
+- `✗` en lugar de `✓`
+- Revisar métricas para identificar problema
+
+---
+
+## Ejecución con Variables de Entorno
+
+### Cambiar duración
+```bash
+set DURATION=5m && k6 run main.js
+```
+
+### Cambiar TPS
+Modificar `config/test.json`:
+```json
+"rate": 30,  // Cambiar de 20 a 30 TPS
+```
+
+### Ejecutar escenario específico
+```bash
+k6 run --env SCENARIO=login main.js
+```
+
+---
+
+## Troubleshooting
+
+### Error: "The system cannot find the path specified"
+**Causa**: Ruta incorrecta al CSV en `scenarios/login.js`
+
+**Solución**:
+Verificar que la línea sea:
+```javascript
+const csvData = open('../data/users.csv');
+```
+
+### Error: "reference to undefined identifier 'scenario'"
+**Causa**: Versión de k6 antigua
+
+**Solución**: Actualizar a k6 v0.47.0+
+```bash
+choco upgrade k6  # Windows
+```
+
+### Error: "context deadline exceeded"
+**Causa**: Timeout de conexión
+
+**Solución**: Verificar conectividad:
+```bash
+curl -X POST https://fakestoreapi.com/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"johnd","password":"m38rmF$"}'
+```
+
+---
+
+## Comandos Útiles
+
+### Ver configuración actual
+```bash
+k6 run --dry-run main.js  # No ejecuta, solo valida
+```
+
+### Ejecutar con más VUs
+```bash
+k6 run --vus 10 main.js  # Ignora config, usa 10 VUs
+```
+
+### Ejecutar con duración personalizada
+```bash
+k6 run --duration 30s main.js  # 30 segundos
+```
+
+### Ejecutar en modo "quiet"
+```bash
+k6 run --quiet main.js  # Solo resultados finales
+```
+
+---
+
+## Estructura de Resultados
+
+Después de ejecutar, se generan:
+
 ```
 k6/
-├── main.js              # Entry point
-├── config/
-│   └── test.json       # Configuración de escenario
-├── scenarios/
-│   └── login.js        # Orquestador (carga CSV, selecciona usuario)
-├── scripts/
-│   └── login.js        # Implementación HTTP (POST + checks)
-├── data/
-│   └── users.csv       # Credenciales
-└── common/
-    └── utils.js        # Utilidades
+├── main.js
+├── resultados.json          # (si usaste --summary-export)
+├── metricas.csv            # (si usaste --out csv=)
+└── ...
 ```
+
+---
+
+## Verificación Final
+
+Para confirmar que todo funciona:
+
+1. ✅ Archivos existen en ubicación correcta
+2. ✅ k6 v0.47.0+ instalado
+3. ✅ Smoke test (1 iteración) pasa
+4. ✅ Test completo finaliza sin errores
+5. ✅ Thresholds muestran `✓` (PASS)
+6. ✅ `resultados.json` contiene métricas (opcional)
+
+---
+
+## Soporte
+
+- **Documentación k6**: https://k6.io/docs/
+- **Foro**: https://community.k6.io/
+- **GitHub**: https://github.com/grafana/k6
+
+---
+
+**Última actualización**: 2024-03-30  
+**Versión de este documento**: 1.0
