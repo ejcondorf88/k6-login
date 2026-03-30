@@ -1,4 +1,4 @@
-export { scenario1 } from './scenarios/scenario1.js';
+export { loginScenario } from './scenarios/login.js';
 
 globalThis.PAUSE_MIN = __ENV.PAUSE_MIN || 1;
 globalThis.PAUSE_MAX = __ENV.PAUSE_MAX || 5;
